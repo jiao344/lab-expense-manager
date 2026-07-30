@@ -1,40 +1,39 @@
 {% extends 'base.html' %}
-{% block title %}绯荤粺璁剧疆{% endblock %}{% block heading %}绯荤粺璁剧疆涓庢暟鎹畨鍏▄% endblock %}
+{% block title %}系统设置{% endblock %}{% block heading %}系统设置与数据安全{% endblock %}
 {% block content %}
 <section class="settings-grid">
   <article class="panel">
-    <div class="panel-head"><div><p class="eyebrow">GENERAL</p><h2>鍩虹涓庨绠楄缃?/h2></div></div>
+    <div class="panel-head"><div><p class="eyebrow">GENERAL</p><h2>基础与预算设置</h2></div></div>
     <form method="post" class="stack-form">
-      <label>鐮旂┒鎵€鍚嶇О<input name="institute_name" value="{{s.institute_name}}" required></label>
-      <label>鍚敤绯荤粺鍓嶇殑鍒濆缁忚垂锛堝厓锛?input type="number" step="0.01" min="0" name="initial_fund" value="{{s.initial_fund}}"></label>
-      <div class="thresholds"><label>涓€绾ф彁閱掞紙%锛?input type="number" name="warning_1" min="1" max="100" value="{{(s.warning_1|float*100)|int}}"></label><label>浜岀骇棰勮锛?锛?input type="number" name="warning_2" min="1" max="100" value="{{(s.warning_2|float*100)|int}}"></label><label>瓒呮敮绾匡紙%锛?input type="number" name="warning_3" min="1" max="200" value="{{(s.warning_3|float*100)|int}}"></label></div>
-      <h3>鍒嗙被棰勭畻</h3>
+      <label>研究所名称<input name="institute_name" value="{{s.institute_name}}" required></label>
+      <label>启用系统前的初始经费（元）<input type="number" step="0.01" min="0" name="initial_fund" value="{{s.initial_fund}}"></label>
+      <div class="thresholds"><label>一级提醒（%）<input type="number" name="warning_1" min="1" max="100" value="{{(s.warning_1|float*100)|int}}"></label><label>二级预警（%）<input type="number" name="warning_2" min="1" max="100" value="{{(s.warning_2|float*100)|int}}"></label><label>超支线（%）<input type="number" name="warning_3" min="1" max="200" value="{{(s.warning_3|float*100)|int}}"></label></div>
+      <h3>分类预算</h3>
       <div class="budget-inputs">{% for c in categories %}<label>{{c.name}}<input type="number" step="0.01" min="0" name="budget_{{c.id}}" value="{{c.budget}}"></label>{% endfor %}</div>
-      <button class="button primary">淇濆瓨鍏ㄩ儴璁剧疆</button>
+      <button class="button primary">保存全部设置</button>
     </form>
   </article>
   <div>
     <article class="panel">
-      <div class="panel-head"><div><p class="eyebrow">MASTER DATA</p><h2>鍒嗙被涓庝汉鍛?/h2></div></div>
-      <form method="post" action="{{url_for('add_category')}}" class="inline-form"><input name="name" placeholder="鏂板鍒嗙被鍚嶇О" required><input name="budget" type="number" min="0" step="0.01" placeholder="棰勭畻"><button class="button secondary">娣诲姞鍒嗙被</button></form>
-      <div class="chips">{% for c in categories %}<span>{{c.name}}<small>棰勭畻 楼{{'{:,.0f}'.format(c.budget)}}</small></span>{% endfor %}</div>
+      <div class="panel-head"><div><p class="eyebrow">MASTER DATA</p><h2>分类与人员</h2></div></div>
+      <form method="post" action="{{url_for('add_category')}}" class="inline-form"><input name="name" placeholder="新增分类名称" required><input name="budget" type="number" min="0" step="0.01" placeholder="预算"><button class="button secondary">添加分类</button></form>
+      <div class="chips">{% for c in categories %}<span>{{c.name}}<small>预算 ¥{{'{:,.0f}'.format(c.budget)}}</small></span>{% endfor %}</div>
       <hr>
-      <form method="post" action="{{url_for('add_person')}}" class="inline-form"><input name="name" placeholder="浜哄憳濮撳悕" required><input name="role" placeholder="瑙掕壊锛屽鎴愬憳"><button class="button secondary">娣诲姞浜哄憳</button></form>
-      <div class="chips">{% for p in people %}<span>{{p.name}}<small>{{p.role}}</small></span>{% else %}<p class="muted">灏氭湭娣诲姞浜哄憳</p>{% endfor %}</div>
+      <form method="post" action="{{url_for('add_person')}}" class="inline-form"><input name="name" placeholder="人员姓名" required><input name="role" placeholder="角色，如成员"><button class="button secondary">添加人员</button></form>
+      <div class="chips">{% for p in people %}<span>{{p.name}}<small>{{p.role}}</small></span>{% else %}<p class="muted">尚未添加人员</p>{% endfor %}</div>
     </article>
     <article class="panel">
-      <div class="panel-head"><div><p class="eyebrow">DATA SAFETY</p><h2>瀵煎叆銆佸浠戒笌鎭㈠</h2></div></div>
+      <div class="panel-head"><div><p class="eyebrow">DATA SAFETY</p><h2>导入、备份与恢复</h2></div></div>
       <div class="safety-actions">
-        <a class="safety-card" href="{{url_for('backup')}}"><b>涓嬭浇瀹屾暣澶囦唤</b><span>鐢熸垚甯︽椂闂存埑鐨?SQLite 澶囦唤鏂囦欢</span></a>
-        <form class="safety-card" method="post" action="{{url_for('import_xlsx')}}" enctype="multipart/form-data"><b>Excel 鎵归噺瀵煎叆</b><span>鏀寔鏍囧噯娴佹按琛ㄥご锛屽崟鏂囦欢涓嶈秴杩?8MB</span><input type="file" name="file" accept=".xlsx" required><button class="text-button">寮€濮嬪鍏?/button></form>
-        <form class="safety-card danger-zone" method="post" action="{{url_for('restore')}}" enctype="multipart/form-data" onsubmit="return confirm('鎭㈠浼氭浛鎹㈠綋鍓嶆暟鎹€傜郴缁熶細鍏堣嚜鍔ㄥ浠藉綋鍓嶆暟鎹簱锛屾槸鍚︾户缁紵')"><b>浠庡浠芥仮澶?/b><span>浠呮帴鍙楃敱鏈郴缁熺敓鎴愮殑 .db 鏂囦欢</span><input type="file" name="file" accept=".db" required><button class="danger-link">鎭㈠鏁版嵁</button></form>
+        <a class="safety-card" href="{{url_for('backup')}}"><b>下载完整备份</b><span>生成带时间戳的 SQLite 备份文件</span></a>
+        <form class="safety-card" method="post" action="{{url_for('import_xlsx')}}" enctype="multipart/form-data"><b>Excel 批量导入</b><span>支持标准流水表头，单文件不超过 8MB</span><input type="file" name="file" accept=".xlsx" required><button class="text-button">开始导入</button></form>
+        <form class="safety-card danger-zone" method="post" action="{{url_for('restore')}}" enctype="multipart/form-data" onsubmit="return confirm('恢复会替换当前数据。系统会先自动备份当前数据库，是否继续？')"><b>从备份恢复</b><span>仅接受由本系统生成的 .db 文件</span><input type="file" name="file" accept=".db" required><button class="danger-link">恢复数据</button></form>
       </div>
     </article>
   </div>
 </section>
 <section class="panel">
-  <div class="panel-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>鏈€杩戞搷浣滄棩蹇?/h2></div></div>
-  <div class="timeline">{% for log in logs %}<div><i></i><span><b>{{log.action}}</b><small>{{log.detail}}</small></span><time>{{log.created_at.replace('T',' ')}}</time></div>{% else %}<p class="empty">鏆傛棤鎿嶄綔鏃ュ織</p>{% endfor %}</div>
+  <div class="panel-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>最近操作日志</h2></div></div>
+  <div class="timeline">{% for log in logs %}<div><i></i><span><b>{{log.action}}</b><small>{{log.detail}}</small></span><time>{{log.created_at.replace('T',' ')}}</time></div>{% else %}<p class="empty">暂无操作日志</p>{% endfor %}</div>
 </section>
 {% endblock %}
-
