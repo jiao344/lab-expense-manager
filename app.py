@@ -13,13 +13,13 @@ from flask import (
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
-APP_NAME = "鏈哄櫒浜虹爺绌舵墍鏃ュ父缁忚垂绠＄悊"
+APP_NAME = "机器人研究所日常经费管理"
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 BACKUP_DIR = BASE_DIR / "backups"
 DB_PATH = DATA_DIR / "expense.db"
-ALLOWED_INVOICE = {"宸叉敹绁?, "鏈敹绁?, "寰呰ˉ绁?, "涓嶉渶绁ㄦ嵁"}
-ALLOWED_TYPE = {"鏀跺叆", "鏀嚭"}
+ALLOWED_INVOICE = {"已收票", "未收票", "待补票", "不需票据"}
+ALLOWED_TYPE = {"收入", "支出"}
 
 app = Flask(__name__)
 app.config.update(
@@ -53,13 +53,13 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS people(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
-                role TEXT NOT NULL DEFAULT '鎴愬憳',
+                role TEXT NOT NULL DEFAULT '成员',
                 active INTEGER NOT NULL DEFAULT 1
             );
             CREATE TABLE IF NOT EXISTS transactions(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 tx_date TEXT NOT NULL,
-                tx_type TEXT NOT NULL CHECK(tx_type IN ('鏀跺叆','鏀嚭')),
+                tx_type TEXT NOT NULL CHECK(tx_type IN ('收入','支出')),
                 amount REAL NOT NULL CHECK(amount > 0),
                 purpose TEXT NOT NULL,
                 category TEXT NOT NULL,
@@ -81,7 +81,7 @@ def init_db() -> None:
             """
         )
         defaults = {
-            "institute_name": "鏈哄櫒浜虹爺绌舵墍",
+            "institute_name": "机器人研究所",
             "initial_fund": "0",
             "warning_1": "0.8",
             "warning_2": "0.9",
@@ -91,7 +91,7 @@ def init_db() -> None:
             "INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)",
             defaults.items(),
         )
-        categories = ["娲诲姩", "鑰楁潗", "鍔炲叕", "璁惧", "缁翠慨", "宸梾", "姣旇禌", "鍩硅", "鎺ュ緟", "鍏朵粬"]
+        categories = ["活动", "耗材", "办公", "设备", "维修", "差旅", "比赛", "培训", "接待", "其他"]
         conn.executemany(
             "INSERT OR IGNORE INTO categories(name,budget) VALUES(?,0)",
             [(name,) for name in categories],
@@ -111,9 +111,9 @@ def money(value: str | float | None) -> float:
     try:
         result = round(float(value or 0), 2)
     except (TypeError, ValueError):
-        raise ValueError("閲戦鏍煎紡涓嶆纭?)
+        raise ValueError("金额格式不正确")
     if result < 0:
-        raise ValueError("閲戦涓嶈兘涓鸿礋鏁?)
+        raise ValueError("金额不能为负数")
     return result
 
 
@@ -130,10 +130,10 @@ def summary(conn: sqlite3.Connection) -> dict[str, float | int]:
     row = conn.execute(
         """
         SELECT
-          COALESCE(SUM(CASE WHEN tx_type='鏀跺叆' THEN amount END),0) income,
-          COALESCE(SUM(CASE WHEN tx_type='鏀嚭' THEN amount END),0) expense,
-          COALESCE(SUM(CASE WHEN tx_type='鏀嚭' AND substr(tx_date,1,7)=? THEN amount END),0) month_expense,
-          COALESCE(SUM(CASE WHEN tx_type='鏀嚭' AND invoice_status IN ('鏈敹绁?,'寰呰ˉ绁?) THEN 1 ELSE 0 END),0) missing
+          COALESCE(SUM(CASE WHEN tx_type='收入' THEN amount END),0) income,
+          COALESCE(SUM(CASE WHEN tx_type='支出' THEN amount END),0) expense,
+          COALESCE(SUM(CASE WHEN tx_type='支出' AND substr(tx_date,1,7)=? THEN amount END),0) month_expense,
+          COALESCE(SUM(CASE WHEN tx_type='支出' AND invoice_status IN ('未收票','待补票') THEN 1 ELSE 0 END),0) missing
         FROM transactions
         """,
         (date.today().strftime("%Y-%m"),),
@@ -167,7 +167,7 @@ def dashboard():
         categories = conn.execute(
             """
             SELECT c.name category,c.budget,
-              COALESCE(SUM(CASE WHEN t.tx_type='鏀嚭' THEN t.amount END),0) total
+              COALESCE(SUM(CASE WHEN t.tx_type='支出' THEN t.amount END),0) total
             FROM categories c LEFT JOIN transactions t ON t.category=c.name
             WHERE c.active=1 GROUP BY c.id ORDER BY total DESC
             """
@@ -175,19 +175,19 @@ def dashboard():
         monthly = conn.execute(
             """
             SELECT substr(tx_date,1,7) month,
-              SUM(CASE WHEN tx_type='鏀跺叆' THEN amount ELSE 0 END) income,
-              SUM(CASE WHEN tx_type='鏀嚭' THEN amount ELSE 0 END) expense
+              SUM(CASE WHEN tx_type='收入' THEN amount ELSE 0 END) income,
+              SUM(CASE WHEN tx_type='支出' THEN amount ELSE 0 END) expense
             FROM transactions GROUP BY month ORDER BY month DESC LIMIT 12
             """
         ).fetchall()[::-1]
         people = conn.execute(
             """
             SELECT user_name,COUNT(*) count,SUM(amount) total
-            FROM transactions WHERE tx_type='鏀嚭' AND user_name<>''
+            FROM transactions WHERE tx_type='支出' AND user_name<>''
             GROUP BY user_name ORDER BY total DESC LIMIT 5
             """
         ).fetchall()
-        institute = settings_map(conn).get("institute_name", "鏈哄櫒浜虹爺绌舵墍")
+        institute = settings_map(conn).get("institute_name", "机器人研究所")
     return render_template(
         "dashboard.html", sm=sm, recent=recent, categories=categories,
         monthly=monthly, people=people, institute=institute,
@@ -237,19 +237,19 @@ def save_transaction():
     try:
         amount = money(form.get("amount"))
         if amount <= 0:
-            raise ValueError("閲戦蹇呴』澶т簬 0")
+            raise ValueError("金额必须大于 0")
         tx_type = form.get("tx_type", "")
         if tx_type not in ALLOWED_TYPE:
-            raise ValueError("鏀舵敮绫诲瀷涓嶆纭?)
+            raise ValueError("收支类型不正确")
         purpose = form.get("purpose", "").strip()
         if not purpose:
-            raise ValueError("鐢ㄩ€斾笉鑳戒负绌?)
+            raise ValueError("用途不能为空")
         invoice = form.get("invoice_status", "")
         if invoice not in ALLOWED_INVOICE:
-            invoice = "涓嶉渶绁ㄦ嵁" if tx_type == "鏀跺叆" else "鏈敹绁?
+            invoice = "不需票据" if tx_type == "收入" else "未收票"
         values = (
             form.get("tx_date") or date.today().isoformat(), tx_type, amount,
-            purpose, form.get("category", "鍏朵粬").strip() or "鍏朵粬",
+            purpose, form.get("category", "其他").strip() or "其他",
             form.get("user_name", "").strip(), form.get("handler", "").strip(),
             form.get("pay_method", "").strip(), invoice,
             form.get("invoice_no", "").strip(), form.get("remark", "").strip(),
@@ -266,8 +266,8 @@ def save_transaction():
                     """,
                     values + (now, int(txid)),
                 )
-                add_audit(conn, "淇敼娴佹按", f"娴佹按 #{txid}锛歿purpose}锛屄amount:.2f}")
-                flash("娴佹按璁板綍宸叉洿鏂?, "success")
+                add_audit(conn, "修改流水", f"流水 #{txid}：{purpose}，¥{amount:.2f}")
+                flash("流水记录已更新", "success")
             else:
                 conn.execute(
                     """
@@ -278,8 +278,8 @@ def save_transaction():
                     """,
                     values + (now, now),
                 )
-                add_audit(conn, "鏂板娴佹按", f"{tx_type}锛歿purpose}锛屄amount:.2f}")
-                flash("娴佹按璁板綍宸蹭繚瀛?, "success")
+                add_audit(conn, "新增流水", f"{tx_type}：{purpose}，¥{amount:.2f}")
+                flash("流水记录已保存", "success")
     except (ValueError, sqlite3.Error) as exc:
         flash(str(exc), "error")
     return redirect(url_for("transactions"))
@@ -291,8 +291,8 @@ def delete_transaction(txid: int):
         row = conn.execute("SELECT purpose,amount FROM transactions WHERE id=?", (txid,)).fetchone()
         if row:
             conn.execute("DELETE FROM transactions WHERE id=?", (txid,))
-            add_audit(conn, "鍒犻櫎娴佹按", f"娴佹按 #{txid}锛歿row['purpose']}锛屄row['amount']:.2f}")
-            flash("娴佹按璁板綍宸插垹闄?, "success")
+            add_audit(conn, "删除流水", f"流水 #{txid}：{row['purpose']}，¥{row['amount']:.2f}")
+            flash("流水记录已删除", "success")
     return redirect(url_for("transactions"))
 
 
@@ -303,7 +303,7 @@ def reports():
         categories = conn.execute(
             """
             SELECT c.name,c.budget,COUNT(t.id) count,
-              COALESCE(SUM(CASE WHEN t.tx_type='鏀嚭' THEN t.amount END),0) total
+              COALESCE(SUM(CASE WHEN t.tx_type='支出' THEN t.amount END),0) total
             FROM categories c LEFT JOIN transactions t ON t.category=c.name
             WHERE c.active=1 GROUP BY c.id ORDER BY total DESC
             """
@@ -311,15 +311,15 @@ def reports():
         people = conn.execute(
             """
             SELECT user_name,COUNT(*) count,SUM(amount) total
-            FROM transactions WHERE tx_type='鏀嚭' AND user_name<>''
+            FROM transactions WHERE tx_type='支出' AND user_name<>''
             GROUP BY user_name ORDER BY total DESC
             """
         ).fetchall()
         months = conn.execute(
             """
             SELECT substr(tx_date,1,7) month,
-              SUM(CASE WHEN tx_type='鏀跺叆' THEN amount ELSE 0 END) income,
-              SUM(CASE WHEN tx_type='鏀嚭' THEN amount ELSE 0 END) expense
+              SUM(CASE WHEN tx_type='收入' THEN amount ELSE 0 END) income,
+              SUM(CASE WHEN tx_type='支出' THEN amount ELSE 0 END) expense
             FROM transactions GROUP BY month ORDER BY month DESC
             """
         ).fetchall()
@@ -332,7 +332,7 @@ def settings():
         if request.method == "POST":
             try:
                 values = {
-                    "institute_name": request.form.get("institute_name", "").strip() or "鏈哄櫒浜虹爺绌舵墍",
+                    "institute_name": request.form.get("institute_name", "").strip() or "机器人研究所",
                     "initial_fund": str(money(request.form.get("initial_fund"))),
                     "warning_1": str(float(request.form.get("warning_1", "80")) / 100),
                     "warning_2": str(float(request.form.get("warning_2", "90")) / 100),
@@ -342,8 +342,8 @@ def settings():
                 for row in conn.execute("SELECT id FROM categories"):
                     budget = money(request.form.get(f"budget_{row['id']}", 0))
                     conn.execute("UPDATE categories SET budget=? WHERE id=?", (budget, row["id"]))
-                add_audit(conn, "鏇存柊璁剧疆", "鏇存柊鐮旂┒鎵€淇℃伅銆佸垵濮嬬粡璐逛笌棰勭畻閰嶇疆")
-                flash("绯荤粺璁剧疆宸蹭繚瀛?, "success")
+                add_audit(conn, "更新设置", "更新研究所信息、初始经费与预算配置")
+                flash("系统设置已保存", "success")
             except ValueError as exc:
                 flash(str(exc), "error")
             return redirect(url_for("settings"))
@@ -361,10 +361,10 @@ def add_category():
         try:
             with db() as conn:
                 conn.execute("INSERT INTO categories(name,budget) VALUES(?,?)", (name, money(request.form.get("budget"))))
-                add_audit(conn, "鏂板鍒嗙被", name)
-            flash("缁忚垂鍒嗙被宸叉坊鍔?, "success")
+                add_audit(conn, "新增分类", name)
+            flash("经费分类已添加", "success")
         except sqlite3.IntegrityError:
-            flash("璇ュ垎绫诲凡瀛樺湪", "error")
+            flash("该分类已存在", "error")
     return redirect(url_for("settings"))
 
 
@@ -374,11 +374,11 @@ def add_person():
     if name:
         try:
             with db() as conn:
-                conn.execute("INSERT INTO people(name,role) VALUES(?,?)", (name, request.form.get("role", "鎴愬憳").strip()))
-                add_audit(conn, "鏂板浜哄憳", name)
-            flash("浜哄憳宸叉坊鍔?, "success")
+                conn.execute("INSERT INTO people(name,role) VALUES(?,?)", (name, request.form.get("role", "成员").strip()))
+                add_audit(conn, "新增人员", name)
+            flash("人员已添加", "success")
         except sqlite3.IntegrityError:
-            flash("璇ヤ汉鍛樺凡瀛樺湪", "error")
+            flash("该人员已存在", "error")
     return redirect(url_for("settings"))
 
 
@@ -387,16 +387,16 @@ def export_xlsx():
     with db() as conn:
         rows = conn.execute("SELECT * FROM transactions ORDER BY tx_date,id").fetchall()
         sm = summary(conn)
-        institute = settings_map(conn).get("institute_name", "鏈哄櫒浜虹爺绌舵墍")
+        institute = settings_map(conn).get("institute_name", "机器人研究所")
     wb = Workbook()
     ws = wb.active
-    ws.title = "缁忚垂娴佹按"
+    ws.title = "经费流水"
     ws.merge_cells("A1:M1")
-    ws["A1"] = f"{institute}鏃ュ父缁忚垂娴佹按"
+    ws["A1"] = f"{institute}日常经费流水"
     ws["A1"].font = Font(size=16, bold=True, color="FFFFFF")
     ws["A1"].fill = PatternFill("solid", fgColor="173F5F")
     ws["A1"].alignment = Alignment(horizontal="center")
-    headers = ["搴忓彿", "鏃ユ湡", "绫诲瀷", "閲戦锛堝厓锛?, "鐢ㄩ€?, "鍒嗙被", "浣跨敤浜?, "缁忓姙浜?, "鏀粯鏂瑰紡", "绁ㄦ嵁鐘舵€?, "鍙戠エ鍙?, "澶囨敞", "缁撲綑锛堝厓锛?]
+    headers = ["序号", "日期", "类型", "金额（元）", "用途", "分类", "使用人", "经办人", "支付方式", "票据状态", "发票号", "备注", "结余（元）"]
     for col, title in enumerate(headers, 1):
         cell = ws.cell(3, col, title)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -404,7 +404,7 @@ def export_xlsx():
         cell.alignment = Alignment(horizontal="center")
     balance = sm["initial"]
     for index, row in enumerate(rows, 1):
-        balance += row["amount"] if row["tx_type"] == "鏀跺叆" else -row["amount"]
+        balance += row["amount"] if row["tx_type"] == "收入" else -row["amount"]
         values = [index, row["tx_date"], row["tx_type"], row["amount"], row["purpose"], row["category"], row["user_name"], row["handler"], row["pay_method"], row["invoice_status"], row["invoice_no"], row["remark"], balance]
         for col, value in enumerate(values, 1):
             ws.cell(index + 3, col, value)
@@ -412,7 +412,7 @@ def export_xlsx():
     ws.auto_filter.ref = f"A3:M{max(3, len(rows) + 3)}"
     for col in ("D", "M"):
         for cell in ws[col][3:]:
-            cell.number_format = '楼#,##0.00'
+            cell.number_format = '¥#,##0.00'
     widths = [8, 13, 9, 14, 30, 12, 12, 12, 13, 13, 18, 30, 15]
     for index, width in enumerate(widths, 1):
         ws.column_dimensions[chr(64 + index)].width = width
@@ -426,17 +426,17 @@ def export_xlsx():
 def import_xlsx():
     upload = request.files.get("file")
     if not upload or not upload.filename.lower().endswith(".xlsx"):
-        flash("璇烽€夋嫨 .xlsx 鏂囦欢", "error")
+        flash("请选择 .xlsx 文件", "error")
         return redirect(url_for("settings"))
     try:
         workbook = load_workbook(upload, read_only=True, data_only=True)
         sheet = workbook.active
         headers = [str(c.value or "").strip() for c in next(sheet.iter_rows())]
-        aliases = {"鏃ユ湡": "tx_date", "绫诲瀷": "tx_type", "閲戦": "amount", "閲戦锛堝厓锛?: "amount", "鐢ㄩ€?: "purpose", "鍒嗙被": "category", "浣跨敤浜?: "user_name", "缁忓姙浜?: "handler", "鏀粯鏂瑰紡": "pay_method", "绁ㄦ嵁鐘舵€?: "invoice_status", "鍙戠エ鍙?: "invoice_no", "澶囨敞": "remark"}
+        aliases = {"日期": "tx_date", "类型": "tx_type", "金额": "amount", "金额（元）": "amount", "用途": "purpose", "分类": "category", "使用人": "user_name", "经办人": "handler", "支付方式": "pay_method", "票据状态": "invoice_status", "发票号": "invoice_no", "备注": "remark"}
         mapping = {i: aliases[h] for i, h in enumerate(headers) if h in aliases}
         required = {"tx_date", "tx_type", "amount", "purpose"}
         if not required.issubset(mapping.values()):
-            raise ValueError("琛ㄥご鑷冲皯闇€瑕侊細鏃ユ湡銆佺被鍨嬨€侀噾棰濄€佺敤閫?)
+            raise ValueError("表头至少需要：日期、类型、金额、用途")
         count = 0
         now = datetime.now().isoformat(timespec="seconds")
         with db() as conn:
@@ -452,17 +452,17 @@ def import_xlsx():
                     tx_date = tx_date.date().isoformat()
                 values = (
                     str(tx_date), tx_type, money(item.get("amount")),
-                    str(item.get("purpose", "")).strip(), str(item.get("category", "鍏朵粬") or "鍏朵粬").strip(),
+                    str(item.get("purpose", "")).strip(), str(item.get("category", "其他") or "其他").strip(),
                     str(item.get("user_name", "") or "").strip(), str(item.get("handler", "") or "").strip(),
                     str(item.get("pay_method", "") or "").strip(), str(item.get("invoice_status", "") or "").strip(),
                     str(item.get("invoice_no", "") or "").strip(), str(item.get("remark", "") or "").strip(), now, now,
                 )
                 conn.execute("INSERT INTO transactions(tx_date,tx_type,amount,purpose,category,user_name,handler,pay_method,invoice_status,invoice_no,remark,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", values)
                 count += 1
-            add_audit(conn, "瀵煎叆娴佹按", f"浠?Excel 瀵煎叆 {count} 鏉?)
-        flash(f"鎴愬姛瀵煎叆 {count} 鏉℃祦姘?, "success")
+            add_audit(conn, "导入流水", f"从 Excel 导入 {count} 条")
+        flash(f"成功导入 {count} 条流水", "success")
     except (ValueError, sqlite3.Error, StopIteration) as exc:
-        flash(f"瀵煎叆澶辫触锛歿exc}", "error")
+        flash(f"导入失败：{exc}", "error")
     return redirect(url_for("settings"))
 
 
@@ -472,7 +472,7 @@ def backup():
     target = BACKUP_DIR / f"expense_backup_{timestamp}.db"
     with db() as source, sqlite3.connect(target) as destination:
         source.backup(destination)
-        add_audit(source, "鍒涘缓澶囦唤", target.name)
+        add_audit(source, "创建备份", target.name)
     return send_file(target, as_attachment=True, download_name=target.name)
 
 
@@ -480,7 +480,7 @@ def backup():
 def restore():
     upload = request.files.get("file")
     if not upload or not upload.filename.lower().endswith(".db"):
-        flash("璇烽€夋嫨鏈夋晥鐨?.db 澶囦唤鏂囦欢", "error")
+        flash("请选择有效的 .db 备份文件", "error")
         return redirect(url_for("settings"))
     temp = DATA_DIR / "restore_check.db"
     upload.save(temp)
@@ -488,14 +488,14 @@ def restore():
         with sqlite3.connect(temp) as check:
             tables = {r[0] for r in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not {"transactions", "settings", "categories", "people"}.issubset(tables):
-            raise ValueError("澶囦唤鏂囦欢缁撴瀯涓嶆纭?)
+            raise ValueError("备份文件结构不正确")
         safety = BACKUP_DIR / f"before_restore_{datetime.now():%Y%m%d_%H%M%S}.db"
         shutil.copy2(DB_PATH, safety)
         os.replace(temp, DB_PATH)
-        flash("鏁版嵁宸叉仮澶嶏紝鎭㈠鍓嶇殑鏁版嵁涔熷凡鑷姩澶囦唤", "success")
+        flash("数据已恢复，恢复前的数据也已自动备份", "success")
     except (sqlite3.Error, ValueError) as exc:
         temp.unlink(missing_ok=True)
-        flash(f"鎭㈠澶辫触锛歿exc}", "error")
+        flash(f"恢复失败：{exc}", "error")
     return redirect(url_for("settings"))
 
 
@@ -503,4 +503,3 @@ init_db()
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)
-
