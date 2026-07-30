@@ -1,29 +1,28 @@
 {% extends 'base.html' %}
-{% block title %}缁熻鎶ヨ〃{% endblock %}{% block heading %}缁熻鍒嗘瀽涓庢姤琛▄% endblock %}
+{% block title %}统计报表{% endblock %}{% block heading %}统计分析与报表{% endblock %}
 {% block content %}
 <section class="report-banner">
-  <div><p class="eyebrow">FINANCIAL REPORT</p><h2>缁忚垂鎵ц鍒嗘瀽</h2><span>鏀跺叆銆佹敮鍑恒€佸垎绫婚绠椾笌浜哄憳浣跨敤鎯呭喌鐨勭粺涓€瑙嗗浘</span></div>
-  <div><b>楼 {{'{:,.2f}'.format(sm.balance)}}</b><small>褰撳墠鍙敤浣欓</small></div>
+  <div><p class="eyebrow">FINANCIAL REPORT</p><h2>经费执行分析</h2><span>收入、支出、分类预算与人员使用情况的统一视图</span></div>
+  <div><b>¥ {{'{:,.2f}'.format(sm.balance)}}</b><small>当前可用余额</small></div>
 </section>
 <section class="three-col">
-  <article class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">MONTHLY</p><h2>鏈堝害鏀舵敮</h2></div></div><canvas id="monthly"></canvas></article>
-  <article class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">CATEGORY</p><h2>鍒嗙被鏀嚭</h2></div></div><canvas id="cats"></canvas></article>
-  <article class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">PEOPLE</p><h2>浜哄憳鎺掕</h2></div></div><canvas id="people"></canvas></article>
+  <article class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">MONTHLY</p><h2>月度收支</h2></div></div><canvas id="monthly"></canvas></article>
+  <article class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">CATEGORY</p><h2>分类支出</h2></div></div><canvas id="cats"></canvas></article>
+  <article class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">PEOPLE</p><h2>人员排行</h2></div></div><canvas id="people"></canvas></article>
 </section>
 <section class="panel">
-  <div class="panel-head"><div><p class="eyebrow">BUDGET CONTROL</p><h2>鍒嗙被棰勭畻鎵ц琛?/h2></div><button class="button secondary" onclick="window.print()">鎵撳嵃鎶ヨ〃</button></div>
-  <div class="table-wrap"><table><thead><tr><th>鍒嗙被</th><th class="right">绗旀暟</th><th class="right">棰勭畻</th><th class="right">宸茬敤</th><th>鎵ц杩涘害</th><th class="right">鍓╀綑</th></tr></thead><tbody>
+  <div class="panel-head"><div><p class="eyebrow">BUDGET CONTROL</p><h2>分类预算执行表</h2></div><button class="button secondary" onclick="window.print()">打印报表</button></div>
+  <div class="table-wrap"><table><thead><tr><th>分类</th><th class="right">笔数</th><th class="right">预算</th><th class="right">已用</th><th>执行进度</th><th class="right">剩余</th></tr></thead><tbody>
   {% for c in categories %}{% set rate=(c.total/c.budget*100) if c.budget else 0 %}
-  <tr><td><b>{{c.name}}</b></td><td class="right">{{c.count}}</td><td class="right">楼{{'{:,.2f}'.format(c.budget)}}</td><td class="right">楼{{'{:,.2f}'.format(c.total)}}</td><td><div class="budget-cell"><div class="progress {{'danger' if rate>=100 else 'warning' if rate>=80}}"><i style="width:{{[rate,100]|min}}%"></i></div><span>{{'%.1f'|format(rate)}}%</span></div></td><td class="right {{'negative' if c.budget-c.total<0}}">楼{{'{:,.2f}'.format(c.budget-c.total)}}</td></tr>
+  <tr><td><b>{{c.name}}</b></td><td class="right">{{c.count}}</td><td class="right">¥{{'{:,.2f}'.format(c.budget)}}</td><td class="right">¥{{'{:,.2f}'.format(c.total)}}</td><td><div class="budget-cell"><div class="progress {{'danger' if rate>=100 else 'warning' if rate>=80}}"><i style="width:{{[rate,100]|min}}%"></i></div><span>{{'%.1f'|format(rate)}}%</span></div></td><td class="right {{'negative' if c.budget-c.total<0}}">¥{{'{:,.2f}'.format(c.budget-c.total)}}</td></tr>
   {% endfor %}</tbody></table></div>
 </section>
-<section class="panel print-only"><h2>鏈堝害鏀舵敮鏄庣粏</h2><table><thead><tr><th>鏈堜唤</th><th class="right">鏀跺叆</th><th class="right">鏀嚭</th><th class="right">鍑€棰?/th></tr></thead><tbody>{% for m in months %}<tr><td>{{m.month}}</td><td class="right">楼{{'{:,.2f}'.format(m.income)}}</td><td class="right">楼{{'{:,.2f}'.format(m.expense)}}</td><td class="right">楼{{'{:,.2f}'.format(m.income-m.expense)}}</td></tr>{% endfor %}</tbody></table></section>
+<section class="panel print-only"><h2>月度收支明细</h2><table><thead><tr><th>月份</th><th class="right">收入</th><th class="right">支出</th><th class="right">净额</th></tr></thead><tbody>{% for m in months %}<tr><td>{{m.month}}</td><td class="right">¥{{'{:,.2f}'.format(m.income)}}</td><td class="right">¥{{'{:,.2f}'.format(m.expense)}}</td><td class="right">¥{{'{:,.2f}'.format(m.income-m.expense)}}</td></tr>{% endfor %}</tbody></table></section>
 {% endblock %}
 {% block scripts %}<script>
 const colors=['#1d6f78','#e36363','#e7b65a','#79b5a9','#66788a','#c3a6cb','#8ea6c9','#dd7d61','#9ca3af','#b9c6cc'];
 const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#eef2f6'},beginAtZero:true}}};
-new Chart(document.getElementById('monthly'),{type:'bar',data:{labels:{{months|map(attribute='month')|list|reverse|list|tojson}},datasets:[{label:'鏀跺叆',data:{{months|map(attribute='income')|list|reverse|list|tojson}},backgroundColor:'#3e8e8c',borderRadius:5},{label:'鏀嚭',data:{{months|map(attribute='expense')|list|reverse|list|tojson}},backgroundColor:'#e6a09b',borderRadius:5}]},options:{...base,plugins:{legend:{display:true,labels:{usePointStyle:true}}}}});
+new Chart(document.getElementById('monthly'),{type:'bar',data:{labels:{{months|map(attribute='month')|list|reverse|list|tojson}},datasets:[{label:'收入',data:{{months|map(attribute='income')|list|reverse|list|tojson}},backgroundColor:'#3e8e8c',borderRadius:5},{label:'支出',data:{{months|map(attribute='expense')|list|reverse|list|tojson}},backgroundColor:'#e6a09b',borderRadius:5}]},options:{...base,plugins:{legend:{display:true,labels:{usePointStyle:true}}}}});
 new Chart(document.getElementById('cats'),{type:'doughnut',data:{labels:{{categories|map(attribute='name')|list|tojson}},datasets:[{data:{{categories|map(attribute='total')|list|tojson}},backgroundColor:colors,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7}}}}});
 new Chart(document.getElementById('people'),{type:'bar',data:{labels:{{people|map(attribute='user_name')|list|tojson}},datasets:[{data:{{people|map(attribute='total')|list|tojson}},backgroundColor:'#1d6f78',borderRadius:5}]},options:{...base,indexAxis:'y'}});
 </script>{% endblock %}
-
