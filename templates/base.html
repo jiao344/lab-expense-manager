@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#102a43">
-  <title>{% block title %}{% endblock %} 路 {{ app_name }}</title>
+  <title>{% block title %}{% endblock %} · {{ app_name }}</title>
   <link rel="stylesheet" href="{{ url_for('static',filename='style.css') }}">
 </head>
 <body>
@@ -12,34 +12,33 @@
   <aside class="sidebar">
     <a class="brand" href="{{ url_for('dashboard') }}">
       <span class="brand-mark">R</span>
-      <span><b>鏈哄櫒浜虹爺绌舵墍</b><small>鏃ュ父缁忚垂绠＄悊</small></span>
+      <span><b>机器人研究所</b><small>日常经费管理</small></span>
     </a>
     <nav>
-      <a class="{{ 'active' if request.endpoint=='dashboard' }}" href="{{url_for('dashboard')}}"><i>鈱?/i>棣栭〉姒傝</a>
-      <a class="{{ 'active' if request.endpoint in ['transactions','save_transaction'] }}" href="{{url_for('transactions')}}"><i>楼</i>缁忚垂娴佹按</a>
-      <a class="{{ 'active' if request.endpoint=='reports' }}" href="{{url_for('reports')}}"><i>鈻?/i>缁熻鎶ヨ〃</a>
-      <a class="{{ 'active' if request.endpoint=='settings' }}" href="{{url_for('settings')}}"><i>鈿?/i>绯荤粺璁剧疆</a>
+      <a class="{{ 'active' if request.endpoint=='dashboard' }}" href="{{url_for('dashboard')}}"><i>⌂</i>首页概览</a>
+      <a class="{{ 'active' if request.endpoint in ['transactions','save_transaction'] }}" href="{{url_for('transactions')}}"><i>¥</i>经费流水</a>
+      <a class="{{ 'active' if request.endpoint=='reports' }}" href="{{url_for('reports')}}"><i>▥</i>统计报表</a>
+      <a class="{{ 'active' if request.endpoint=='settings' }}" href="{{url_for('settings')}}"><i>⚙</i>系统设置</a>
     </nav>
-    <div class="sidebar-foot"><span class="status-dot"></span>鏈湴鏁版嵁搴撹繍琛屾甯?small>鏁版嵁浠呬繚瀛樺湪鏈満</small></div>
+    <div class="sidebar-foot"><span class="status-dot"></span>本地数据库运行正常<small>数据仅保存在本机</small></div>
   </aside>
   <main>
     <header class="topbar">
       <div><p class="eyebrow">LAB FINANCE CENTER</p><h1>{% block heading %}{% endblock %}</h1></div>
       <div class="top-actions">
         <span class="date-chip">{{ today }}</span>
-        <a class="button secondary" href="{{url_for('export_xlsx')}}">瀵煎嚭 Excel</a>
-        <a class="button primary" href="{{url_for('transactions')}}#entry">锛?璁颁竴绗?/a>
+        <a class="button secondary" href="{{url_for('export_xlsx')}}">导出 Excel</a>
+        <a class="button primary" href="{{url_for('transactions')}}#entry">＋ 记一笔</a>
       </div>
     </header>
     {% with messages=get_flashed_messages(with_categories=true) %}
       {% for category,message in messages %}<div class="flash {{category}}">{{message}}</div>{% endfor %}
     {% endwith %}
     {% block content %}{% endblock %}
-    <footer>鏈哄櫒浜虹爺绌舵墍鏃ュ父缁忚垂绠＄悊 路 涓撲笟鏈湴鐗?/footer>
+    <footer>机器人研究所日常经费管理 · 专业本地版</footer>
   </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
-
