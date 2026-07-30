@@ -1,42 +1,41 @@
 {% extends 'base.html' %}
-{% block title %}缁忚垂娴佹按{% endblock %}{% block heading %}缁忚垂娴佹按绠＄悊{% endblock %}
+{% block title %}经费流水{% endblock %}{% block heading %}经费流水管理{% endblock %}
 {% block content %}
 <section class="panel entry-panel" id="entry">
-  <div class="panel-head"><div><p class="eyebrow">NEW RECORD</p><h2 id="form-title">鏂板鏀舵敮璁板綍</h2></div><button class="text-button" type="button" onclick="resetForm()">娓呯┖琛ㄥ崟</button></div>
+  <div class="panel-head"><div><p class="eyebrow">NEW RECORD</p><h2 id="form-title">新增收支记录</h2></div><button class="text-button" type="button" onclick="resetForm()">清空表单</button></div>
   <form method="post" action="{{url_for('save_transaction')}}" class="form-grid" id="tx-form">
     <input type="hidden" name="id" id="tx-id">
-    <label>涓氬姟鏃ユ湡<input type="date" name="tx_date" id="tx-date" value="{{today}}" required></label>
-    <label>鏀舵敮绫诲瀷<select name="tx_type" id="tx-type"><option>鏀嚭</option><option>鏀跺叆</option></select></label>
-    <label>閲戦锛堝厓锛?input type="number" name="amount" id="amount" step="0.01" min="0.01" placeholder="0.00" required></label>
-    <label class="span-2">鐢ㄩ€旀憳瑕?input name="purpose" id="purpose" placeholder="渚嬪锛氶噰璐疄楠岃€楁潗" maxlength="100" required></label>
-    <label>缁忚垂鍒嗙被<select name="category" id="category">{% for c in categories %}<option>{{c.name}}</option>{% endfor %}</select></label>
-    <label>浣跨敤浜?input name="user_name" id="user-name" list="people-list" placeholder="閫夋嫨鎴栬緭鍏?><datalist id="people-list">{% for p in people %}<option value="{{p.name}}">{% endfor %}</datalist></label>
-    <label>缁忓姙浜?input name="handler" id="handler" placeholder="瀹為檯缁忓姙浜哄憳"></label>
-    <label>鏀粯鏂瑰紡<select name="pay_method" id="pay-method"><option>寰俊</option><option>鏀粯瀹?/option><option>閾惰鍗?/option><option>鐜伴噾</option><option>瀵瑰叕杞处</option><option>鍏朵粬</option></select></label>
-    <label>绁ㄦ嵁鐘舵€?select name="invoice_status" id="invoice-status"><option>宸叉敹绁?/option><option selected>鏈敹绁?/option><option>寰呰ˉ绁?/option><option>涓嶉渶绁ㄦ嵁</option></select></label>
-    <label>鍙戠エ鍙风爜<input name="invoice_no" id="invoice-no" placeholder="鍙€?></label>
-    <label class="span-2">澶囨敞<input name="remark" id="remark" placeholder="琛ュ厖璇存槑銆侀」鐩紪鍙风瓑"></label>
-    <button class="button primary submit" type="submit">淇濆瓨璁板綍</button>
+    <label>业务日期<input type="date" name="tx_date" id="tx-date" value="{{today}}" required></label>
+    <label>收支类型<select name="tx_type" id="tx-type"><option>支出</option><option>收入</option></select></label>
+    <label>金额（元）<input type="number" name="amount" id="amount" step="0.01" min="0.01" placeholder="0.00" required></label>
+    <label class="span-2">用途摘要<input name="purpose" id="purpose" placeholder="例如：采购实验耗材" maxlength="100" required></label>
+    <label>经费分类<select name="category" id="category">{% for c in categories %}<option>{{c.name}}</option>{% endfor %}</select></label>
+    <label>使用人<input name="user_name" id="user-name" list="people-list" placeholder="选择或输入"><datalist id="people-list">{% for p in people %}<option value="{{p.name}}">{% endfor %}</datalist></label>
+    <label>经办人<input name="handler" id="handler" placeholder="实际经办人员"></label>
+    <label>支付方式<select name="pay_method" id="pay-method"><option>微信</option><option>支付宝</option><option>银行卡</option><option>现金</option><option>对公转账</option><option>其他</option></select></label>
+    <label>票据状态<select name="invoice_status" id="invoice-status"><option>已收票</option><option selected>未收票</option><option>待补票</option><option>不需票据</option></select></label>
+    <label>发票号码<input name="invoice_no" id="invoice-no" placeholder="可选"></label>
+    <label class="span-2">备注<input name="remark" id="remark" placeholder="补充说明、项目编号等"></label>
+    <button class="button primary submit" type="submit">保存记录</button>
   </form>
 </section>
 <section class="panel">
-  <div class="panel-head"><div><p class="eyebrow">LEDGER</p><h2>鍏ㄩ儴娴佹按 <span class="count">{{rows|length}} 绗?路 楼{{'{:,.2f}'.format(total)}}</span></h2></div><a class="button secondary" href="{{url_for('export_xlsx')}}">瀵煎嚭褰撳墠鍙拌处</a></div>
+  <div class="panel-head"><div><p class="eyebrow">LEDGER</p><h2>全部流水 <span class="count">{{rows|length}} 笔 · ¥{{'{:,.2f}'.format(total)}}</span></h2></div><a class="button secondary" href="{{url_for('export_xlsx')}}">导出当前台账</a></div>
   <form class="filters" method="get">
-    <select name="type"><option value="">鍏ㄩ儴绫诲瀷</option><option {{'selected' if filters.type=='鏀跺叆'}}>鏀跺叆</option><option {{'selected' if filters.type=='鏀嚭'}}>鏀嚭</option></select>
-    <select name="category"><option value="">鍏ㄩ儴鍒嗙被</option>{% for c in categories %}<option {{'selected' if filters.category==c.name}}>{{c.name}}</option>{% endfor %}</select>
-    <select name="invoice"><option value="">鍏ㄩ儴绁ㄦ嵁</option>{% for s in ['宸叉敹绁?,'鏈敹绁?,'寰呰ˉ绁?,'涓嶉渶绁ㄦ嵁'] %}<option {{'selected' if filters.invoice==s}}>{{s}}</option>{% endfor %}</select>
-    <input type="date" name="start" value="{{filters.start}}" title="寮€濮嬫棩鏈?><input type="date" name="end" value="{{filters.end}}" title="缁撴潫鏃ユ湡">
-    <input name="keyword" value="{{filters.keyword}}" placeholder="鎼滅储鐢ㄩ€斻€佷汉鍛樸€佺エ鍙?>
-    <button class="button secondary">鏌ヨ</button><a class="text-button" href="{{url_for('transactions')}}">閲嶇疆</a>
+    <select name="type"><option value="">全部类型</option><option {{'selected' if filters.type=='收入'}}>收入</option><option {{'selected' if filters.type=='支出'}}>支出</option></select>
+    <select name="category"><option value="">全部分类</option>{% for c in categories %}<option {{'selected' if filters.category==c.name}}>{{c.name}}</option>{% endfor %}</select>
+    <select name="invoice"><option value="">全部票据</option>{% for s in ['已收票','未收票','待补票','不需票据'] %}<option {{'selected' if filters.invoice==s}}>{{s}}</option>{% endfor %}</select>
+    <input type="date" name="start" value="{{filters.start}}" title="开始日期"><input type="date" name="end" value="{{filters.end}}" title="结束日期">
+    <input name="keyword" value="{{filters.keyword}}" placeholder="搜索用途、人员、票号">
+    <button class="button secondary">查询</button><a class="text-button" href="{{url_for('transactions')}}">重置</a>
   </form>
-  <div class="table-wrap"><table><thead><tr><th>鏃ユ湡 / ID</th><th>绫诲瀷</th><th>鎽樿</th><th>鍒嗙被</th><th>浜哄憳</th><th>绁ㄦ嵁</th><th class="right">閲戦</th><th class="right">鎿嶄綔</th></tr></thead><tbody>
-  {% for r in rows %}<tr><td>{{r.tx_date}}<small>#{{r.id}}</small></td><td><span class="pill {{'good' if r.tx_type=='鏀跺叆' else 'neutral'}}">{{r.tx_type}}</span></td><td><b>{{r.purpose}}</b><small>{{r.remark or '鈥?}}</small></td><td>{{r.category}}</td><td>{{r.user_name or '鈥?}}<small>缁忓姙锛歿{r.handler or '鈥?}}</small></td><td><span class="pill {{'good' if r.invoice_status in ['宸叉敹绁?,'涓嶉渶绁ㄦ嵁'] else 'warn'}}">{{r.invoice_status}}</span><small>{{r.invoice_no}}</small></td><td class="right amount {{'income' if r.tx_type=='鏀跺叆' else 'expense'}}">{{'+' if r.tx_type=='鏀跺叆' else '-'}} 楼{{'{:,.2f}'.format(r.amount)}}</td><td class="right actions"><button type="button" class="text-button" data-record='{{ dict(r)|tojson }}' onclick="editRecord(this)">缂栬緫</button><form method="post" action="{{url_for('delete_transaction',txid=r.id)}}" onsubmit="return confirm('纭畾鍒犻櫎杩欐潯娴佹按鍚楋紵璇ユ搷浣滀細璁板綍鍦ㄥ璁℃棩蹇椾腑銆?)"><button class="danger-link">鍒犻櫎</button></form></td></tr>
-  {% else %}<tr><td colspan="8" class="empty">娌℃湁绗﹀悎鏉′欢鐨勬祦姘磋褰?/td></tr>{% endfor %}
+  <div class="table-wrap"><table><thead><tr><th>日期 / ID</th><th>类型</th><th>摘要</th><th>分类</th><th>人员</th><th>票据</th><th class="right">金额</th><th class="right">操作</th></tr></thead><tbody>
+  {% for r in rows %}<tr><td>{{r.tx_date}}<small>#{{r.id}}</small></td><td><span class="pill {{'good' if r.tx_type=='收入' else 'neutral'}}">{{r.tx_type}}</span></td><td><b>{{r.purpose}}</b><small>{{r.remark or '—'}}</small></td><td>{{r.category}}</td><td>{{r.user_name or '—'}}<small>经办：{{r.handler or '—'}}</small></td><td><span class="pill {{'good' if r.invoice_status in ['已收票','不需票据'] else 'warn'}}">{{r.invoice_status}}</span><small>{{r.invoice_no}}</small></td><td class="right amount {{'income' if r.tx_type=='收入' else 'expense'}}">{{'+' if r.tx_type=='收入' else '-'}} ¥{{'{:,.2f}'.format(r.amount)}}</td><td class="right actions"><button type="button" class="text-button" data-record='{{ dict(r)|tojson }}' onclick="editRecord(this)">编辑</button><form method="post" action="{{url_for('delete_transaction',txid=r.id)}}" onsubmit="return confirm('确定删除这条流水吗？该操作会记录在审计日志中。')"><button class="danger-link">删除</button></form></td></tr>
+  {% else %}<tr><td colspan="8" class="empty">没有符合条件的流水记录</td></tr>{% endfor %}
   </tbody></table></div>
 </section>
 {% endblock %}
 {% block scripts %}<script>
-function editRecord(button){const r=JSON.parse(button.dataset.record);const ids={'tx-id':'id','tx-date':'tx_date','tx-type':'tx_type','amount':'amount','purpose':'purpose','category':'category','user-name':'user_name','handler':'handler','pay-method':'pay_method','invoice-status':'invoice_status','invoice-no':'invoice_no','remark':'remark'};Object.entries(ids).forEach(([id,key])=>document.getElementById(id).value=r[key]??'');document.getElementById('form-title').textContent='缂栬緫娴佹按 #'+r.id;document.getElementById('entry').scrollIntoView({behavior:'smooth'});}
-function resetForm(){document.getElementById('tx-form').reset();document.getElementById('tx-id').value='';document.getElementById('tx-date').value='{{today}}';document.getElementById('form-title').textContent='鏂板鏀舵敮璁板綍';}
+function editRecord(button){const r=JSON.parse(button.dataset.record);const ids={'tx-id':'id','tx-date':'tx_date','tx-type':'tx_type','amount':'amount','purpose':'purpose','category':'category','user-name':'user_name','handler':'handler','pay-method':'pay_method','invoice-status':'invoice_status','invoice-no':'invoice_no','remark':'remark'};Object.entries(ids).forEach(([id,key])=>document.getElementById(id).value=r[key]??'');document.getElementById('form-title').textContent='编辑流水 #'+r.id;document.getElementById('entry').scrollIntoView({behavior:'smooth'});}
+function resetForm(){document.getElementById('tx-form').reset();document.getElementById('tx-id').value='';document.getElementById('tx-date').value='{{today}}';document.getElementById('form-title').textContent='新增收支记录';}
 </script>{% endblock %}
-
