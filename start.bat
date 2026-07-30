@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.4 seconds
-Output:
 @echo off
 chcp 65001 >nul
 title 鏈哄櫒浜虹爺绌舵墍鏃ュ父缁忚垂绠＄悊
